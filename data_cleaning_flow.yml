@@ -1,0 +1,36 @@
+id: data_cleaning
+namespace: rfdhaikal.wizz
+
+inputs:
+  - id: input_file
+    type: FILE
+
+tasks:
+  - id: cleaning
+    type: io.kestra.plugin.scripts.python.Script
+    inputFiles:
+      input_csv: "{{ inputs.input_file }}"
+    
+    beforeCommands:
+      - pip install pandas
+
+    script: |
+      import pandas as pd
+      
+      df = pd.read_csv('{{ inputs.input_file }}', na_values=['null'], low_memory=False)
+      
+      target = ['itemId', 'category', 'name', 'rating', 'reviewContent']
+      df = df[target]
+
+      df['itemId'] = df['itemId'].fillna(0).astype(int)
+      df['category'] = df['category'].fillna('Unknown').str.strip()
+      df['name'] = df['name'].fillna('Anonymous').str.strip()
+      df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
+      df['reviewContent'] = df['reviewContent'].fillna('').str.strip()
+
+      df = df.dropna()
+      
+      df.to_csv('cleaned_reviews.csv', index=False)
+
+    outputFiles:
+      - 'cleaned_reviews.csv'
